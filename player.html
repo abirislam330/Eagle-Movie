@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eagle Movie Player</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(90deg, #00f2fe, #d900c2);
+            --plyr-color-main: #00f2fe;
+            --background-color: #0a0a0f;
+            --surface-color: #111118;
+            --text-color: #ededf0;
+            --text-muted: #8a8a93;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .player-wrapper {
+            background-color: #000;
+            width: 100%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            position: relative; /* হোম বাটনের জন্য জরুরি */
+        }
+        .player-container {
+            max-width: 950px;
+            margin: auto;
+        }
+        video {
+            width: 100%;
+            outline: none;
+        }
+
+        /* ===== হোম বাটনের স্টাইল ===== */
+        .home-button {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 110;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .home-button:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .home-button svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        #audio-controls-container {
+            padding: 10px 0;
+            text-align: center;
+            background-color: #000;
+        }
+        .audio-btn {
+            background: var(--surface-color); border: 1px solid var(--border-color);
+            color: var(--text-color); padding: 8px 16px; border-radius: 20px;
+            cursor: pointer; margin: 4px 5px; transition: all 0.3s;
+        }
+        .audio-btn:hover {
+            border-color: var(--plyr-color-main);
+        }
+        .audio-btn.active {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .ad-container {
+            width: 100%; margin: 20px 0; display: flex;
+            justify-content: center; align-items: center;
+        }
+
+        .related-movies-section { padding: 20px 7%; }
+        .related-movies-section h2 { font-size: 1.4rem; margin-bottom: 20px; }
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 20px;
+        }
+        .movie-card {
+            background-color: transparent; text-decoration: none;
+            color: inherit; display: block; transition: transform 0.3s;
+        }
+        .movie-card:hover { transform: translateY(-5px); }
+        .poster-container {
+            border-radius: 12px; overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .poster-container img { width: 100%; display: block; aspect-ratio: 2/3; object-fit: cover; }
+        .movie-details { padding-top: 12px; }
+        .movie-name { font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .movie-year { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+        
+        .app-message { text-align: center; padding: 40px; color: var(--text-muted); grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+    <header class="player-wrapper" id="player-wrapper">
+        <!-- ===== হোম আইকন বাটন ===== -->
+        <a href="index.html" class="home-button" title="Back to Home">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+        </a>
+        <div class="player-container">
+            <video id="videoPlayer" playsinline controls></video>
+        </div>
+        <div id="audio-controls-container"></div>
+    </header>
+
+    <main>
+        <!-- ব্যানার বিজ্ঞাপন -->
+        <div class="ad-container">
+            <script type="text/javascript">
+                atOptions = {
+                    'key' : '62940f7a64e8cd357aed2bc2becb63e8',
+                    'format' : 'iframe',
+                    'height' : 50,
+                    'width' : 320,
+                    'params' : {}
+                };
+            </script>
+            <script type="text/javascript" src="//www.highperformanceformat.com/62940f7a64e8cd357aed2bc2becb63e8/invoke.js"></script>
+        </div>
+
+        <section class="related-movies-section" id="related-movies-section">
+            <h2>Related Movies</h2>
+            <div class="movie-grid" id="related-movie-grid"></div>
+        </section>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBdRnTSL7tt4cTSLKVYvPFBuzUTjejaTPQ",
+            authDomain: "eagle-96a1f.firebaseapp.com",
+            projectId: "eagle-96a1f",
+            storageBucket: "eagle-96a1f.appspot.com",
+            messagingSenderId: "377515673354",
+            appId: "1:377515673354:web:98a67a5802019ff8e39cf3"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoElement = document.getElementById('videoPlayer');
+            const audioControlsContainer = document.getElementById('audio-controls-container');
+            const relatedMovieGrid = document.getElementById('related-movie-grid');
+            const relatedMoviesSection = document.getElementById('related-movies-section');
+            let player;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoUrl = decodeURIComponent(urlParams.get('videoUrl') || '');
+            const category = decodeURIComponent(urlParams.get('category') || '');
+            const movieName = decodeURIComponent(urlParams.get('name') || '');
+            if (movieName) { document.title = `Playing: ${movieName}`; }
+
+            function setupAudioControls(hls) {
+                const audioTracks = hls.audioTracks;
+                audioControlsContainer.innerHTML = '';
+                if (audioTracks.length > 1) {
+                    audioTracks.forEach((track, index) => {
+                        const button = document.createElement('button');
+                        button.className = 'audio-btn';
+                        button.innerText = track.name || `Audio ${index + 1}`;
+                        if (track.id === hls.audioTrack) {
+                            button.classList.add('active');
+                        }
+                        button.onclick = () => {
+                            hls.audioTrack = index;
+                            document.querySelectorAll('.audio-btn').forEach(btn => btn.classList.remove('active'));
+                            button.classList.add('active');
+                        };
+                        audioControlsContainer.appendChild(button);
+                    });
+                }
+            }
+
+            function initPlayer(url) {
+                if (!url || url === 'null' || url.trim() === '') {
+                    document.getElementById('player-wrapper').innerHTML = '<p class="app-message" style="padding: 50px 0;">Video not available.</p>';
+                    return;
+                }
+                const defaultOptions = {
+                    autoplay: true,
+                    muted: true,
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                    settings: ['captions', 'quality', 'speed'],
+                };
+
+                if (Hls.isSupported() && url.includes('.m3u8')) {
+                    const hls = new Hls();
+                    hls.loadSource(url);
+                    hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                        const qualityOptions = data.levels.map((l) => l.height);
+                        if (qualityOptions.length > 0) {
+                             defaultOptions.quality = {
+                                default: qualityOptions[0],
+                                options: qualityOptions,
+                                forced: true,
+                                onChange: (e) => (hls.currentLevel = hls.levels.findIndex(level => level.height === e)),
+                            };
+                        }
+                        player = new Plyr(videoElement, defaultOptions);
+                        setupAudioControls(hls);
+                    });
+                    hls.attachMedia(videoElement);
+                    window.hls = hls;
+                } else {
+                    videoElement.src = url;
+                    player = new Plyr(videoElement, defaultOptions);
+                }
+                window.player = player;
+            }
+
+            async function fetchAndDisplayRelatedMovies(currentCategory, currentMovieName) {
+                if (!currentCategory || currentCategory === 'null' || currentCategory.trim() === '') {
+                    relatedMoviesSection.style.display = 'none';
+                    return;
+                }
+                relatedMovieGrid.innerHTML = `<p class="app-message">Loading related movies...</p>`;
+                try {
+                    const snapshot = await db.collection('movies').where('category', '==', currentCategory).limit(12).get();
+                    const movies = snapshot.docs.map(doc => doc.data()).filter(movie => movie.name !== currentMovieName);
+                    if (movies.length === 0) {
+                        relatedMovieGrid.innerHTML = `<p class="app-message">No related movies found.</p>`;
+                        return;
+                    }
+                    let moviesHTML = '';
+                    movies.forEach(movie => {
+                        moviesHTML += `
+                            <a href="player.html?videoUrl=${encodeURIComponent(movie.videoUrl || '')}&category=${encodeURIComponent(movie.category || '')}&name=${encodeURIComponent(movie.name || '')}" class="movie-card">
+                                <div class="poster-container"><img src="${movie.posterUrl}" alt="${movie.name}"></div>
+                                <div class="movie-details">
+                                    <p class="movie-name">${movie.name}</p>
+                                    <p class="movie-year">${movie.year}</p>
+                                </div>
+                            </a>`;
+                    });
+                    relatedMovieGrid.innerHTML = moviesHTML;
+                } catch (error) {
+                    console.error("Error fetching related movies:", error);
+                    relatedMovieGrid.innerHTML = `<p class="app-message">Could not load related movies.</p>`;
+                }
+            }
+
+            initPlayer(videoUrl);
+            fetchAndDisplayRelatedMovies(category, movieName);
+        });
+    </script>
+
+    <!-- বিজ্ঞাপন কোড -->
+    <script type='text/javascript' src='//pl27261571.profitableratecpm.com/69/8a/9f/698a9ffc9f1a74326be2ccf1330fcc19.js'></script>
+    <script type='text/javascript' src='//pl27261580.profitableratecpm.com/59/0a/7c/590a7cb5d2f6dcf95f0adfe7491c9521.js'></script>
+
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eagle Movie - Browse & Search</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(90deg, #00f2fe, #d900c2);
+            --background-color: #0a0a0f;
+            --surface-color: #111118;
+            --text-color: #ededf0;
+            --text-muted: #8a8a93;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--background-color); color: var(--text-color); }
+        .header { padding: 20px 7%; display: flex; justify-content: center; align-items: center; }
+        .logo { font-size: 26px; font-weight: 800; }
+        .logo span { background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        main { padding-top: 20px; }
+
+        .filter-section { padding: 0 7%; }
+        .filter-chips { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 20px; }
+        .filter-chips::-webkit-scrollbar { display: none; }
+        .filter-chips { -ms-overflow-style: none; scrollbar-width: none; }
+        .filter-chip { background-color: var(--surface-color); border: 1px solid var(--border-color); color: var(--text-muted); padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: 500; white-space: nowrap; transition: all 0.3s; }
+        .filter-chip.active, .filter-chip:hover { background: var(--primary-gradient); color: white; border-color: transparent; }
+
+        .search-section { padding: 0 7%; margin-bottom: 30px; }
+        #main-search-input {
+            width: 100%; padding: 15px 20px; background-color: var(--surface-color);
+            border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-color);
+            font-size: 1rem; font-family: 'Manrope', sans-serif;
+        }
+        #main-search-input::placeholder { color: var(--text-muted); }
+        #main-search-input:focus { outline: none; border-color: #00f2fe; }
+
+        .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; padding: 0 7% 30px; }
+        .movie-card { background-color: transparent; cursor: pointer; transition: transform 0.3s; }
+        .movie-card:hover { transform: translateY(-5px); }
+        .poster-container { border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .poster-container img { width: 100%; display: block; aspect-ratio: 2/3; object-fit: cover; }
+        .movie-details { padding-top: 12px; }
+        .movie-name { font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .movie-year { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+        .app-message { text-align: center; padding: 40px; color: var(--text-muted); grid-column: 1 / -1; }
+
+        /* ===== নতুন CSS: লোডিং স্পিনারের জন্য শুরু ===== */
+        .loader-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 50px;
+            width: 100%;
+        }
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--surface-color);
+            border-top-color: #00f2fe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        /* ===== নতুন CSS: লোডিং স্পিনারের জন্য শেষ ===== */
+
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">EAGLE<span>MOVIE</span></div>
+    </header>
+    <main>
+        <section class="filter-section">
+            <div class="filter-chips" id="filter-chips"></div>
+        </section>
+        <section class="search-section">
+            <input type="text" id="main-search-input" placeholder="Search all movies...">
+        </section>
+
+        <!-- ===== নতুন HTML: স্পিনারের জন্য কন্টেইনার ===== -->
+        <div class="loader-wrapper" id="loader">
+            <div class="loader"></div>
+        </div>
+
+        <!-- ===== পরিবর্তিত HTML: মুভি গ্রিড প্রথমে লুকানো থাকবে ===== -->
+        <section class="movie-grid" id="movie-grid" style="display: none;"></section>
+    </main>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBdRnTSL7tt4cTSLKVYvPFBuzUTjejaTPQ",
+            authDomain: "eagle-96a1f.firebaseapp.com",
+            projectId: "eagle-96a1f",
+            storageBucket: "eagle-96a1f.appspot.com",
+            messagingSenderId: "377515673354",
+            appId: "1:377515673354:web:98a67a5802019ff8e39cf3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const movieGrid = document.getElementById('movie-grid');
+            const mainSearchInput = document.getElementById('main-search-input');
+            const filterChipsContainer = document.getElementById('filter-chips');
+            const loader = document.getElementById('loader'); // স্পিনারের রেফারেন্স
+            let allMovies = []; 
+
+            function displayMovies(movies) {
+                if (movies.length === 0) {
+                    movieGrid.innerHTML = `<p class="app-message">No movies found.</p>`;
+                    return;
+                }
+                let moviesHTML = '';
+                movies.forEach(movie => {
+                    moviesHTML += `
+                        <div class="movie-card" 
+                             data-video-url="${movie.videoUrl || ''}" 
+                             data-category="${movie.category || ''}"
+                             data-name="${movie.name || ''}">
+                            <div class="poster-container"><img src="${movie.posterUrl}" alt="${movie.name}"></div>
+                            <div class="movie-details">
+                                <p class="movie-name">${movie.name}</p>
+                                <p class="movie-year">${movie.year}</p>
+                            </div>
+                        </div>`;
+                });
+                movieGrid.innerHTML = moviesHTML;
+            }
+
+            async function fetchAndDisplayCategories() {
+                try {
+                    const snapshot = await db.collection('categories').orderBy('name').get();
+                    if (snapshot.empty) return null;
+                    
+                    let chipsHTML = '';
+                    snapshot.forEach((doc, index) => {
+                        const categoryName = doc.data().name;
+                        const activeClass = index === 0 ? 'active' : '';
+                        chipsHTML += `<button class="filter-chip ${activeClass}" data-category="${categoryName}">${categoryName}</button>`;
+                    });
+                    filterChipsContainer.innerHTML = chipsHTML;
+                    return snapshot.docs[0].data().name; 
+                } catch (error) {
+                    console.error("Error fetching categories:", error);
+                    return null;
+                }
+            }
+            
+            filterChipsContainer.addEventListener('click', function(event) {
+                const target = event.target;
+                if (target.matches('.filter-chip')) {
+                    filterChipsContainer.querySelector('.active')?.classList.remove('active');
+                    target.classList.add('active');
+                    mainSearchInput.value = '';
+                    const category = target.dataset.category;
+                    const filteredMovies = allMovies.filter(movie => movie.category === category);
+                    displayMovies(filteredMovies);
+                }
+            });
+
+            mainSearchInput.addEventListener('input', function(event) {
+                const searchTerm = event.target.value.toLowerCase().trim();
+                filterChipsContainer.querySelector('.active')?.classList.remove('active');
+                const filteredMovies = allMovies.filter(movie => movie.name.toLowerCase().includes(searchTerm));
+                displayMovies(filteredMovies);
+            });
+
+            movieGrid.addEventListener('click', (event) => {
+                const card = event.target.closest('.movie-card');
+                if (card) {
+                    const videoUrl = card.dataset.videoUrl;
+                    const category = card.dataset.category;
+                    const name = card.dataset.name;
+                    const playerPageUrl = `player.html?videoUrl=${encodeURIComponent(videoUrl)}&category=${encodeURIComponent(category)}&name=${encodeURIComponent(name)}`;
+                    window.open(playerPageUrl, '_blank');
+                }
+            });
+
+            async function initializeApp() {
+                // অ্যাপ শুরুতেই স্পিনার দেখাও এবং গ্রিড লুকাও
+                loader.style.display = 'flex';
+                movieGrid.style.display = 'none';
+
+                try {
+                    const movieSnapshot = await db.collection('movies').get();
+                    allMovies = movieSnapshot.docs.map(doc => doc.data());
+                    const firstCategory = await fetchAndDisplayCategories();
+                    
+                    if (firstCategory) {
+                        const initialMovies = allMovies.filter(movie => movie.category === firstCategory);
+                        displayMovies(initialMovies);
+                    } else {
+                        displayMovies(allMovies);
+                    }
+                } catch (error) {
+                    console.error("Initialization failed:", error);
+                    movieGrid.innerHTML = `<p class="app-message">Failed to load movies.</p>`;
+                } finally {
+                    // সফল হোক বা ব্যর্থ, শেষে স্পিনারটি লুকাও এবং মুভির গ্রিডটি দেখাও
+                    loader.style.display = 'none';
+                    movieGrid.style.display = 'grid';
+                }
+            }
+            
+            initializeApp();
+        });
+    </script>
+</body>
+</html>
