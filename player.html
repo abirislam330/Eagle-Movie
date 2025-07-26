@@ -180,6 +180,35 @@
             const movieName = decodeURIComponent(urlParams.get('name') || '');
             if (movieName) { document.title = `Playing: ${movieName}`; }
 
+            // ===== নতুন ফাংশন: ডাবল ট্যাপ করে Seek করার জন্য =====
+            function setupDoubleTapToSeek(player, container) {
+                let lastTap = 0;
+                let timeout = null;
+                const DOUBLE_TAP_DELAY = 300; // ms
+
+                container.addEventListener('touchend', (event) => {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTap;
+                    if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+                        event.preventDefault();
+                        const rect = container.getBoundingClientRect();
+                        const tapPositionX = event.changedTouches[0].clientX - rect.left;
+                        
+                        if (tapPositionX > rect.width / 2) {
+                            player.forward(10);
+                        } else {
+                            player.rewind(10);
+                        }
+                        clearTimeout(timeout);
+                    } else {
+                        timeout = setTimeout(() => {
+                           // Single tap action (optional)
+                        }, DOUBLE_TAP_DELAY);
+                    }
+                    lastTap = currentTime;
+                });
+            }
+
             function setupAudioControls(hls) {
                 const audioTracks = hls.audioTracks;
                 audioControlsContainer.innerHTML = '';
@@ -211,6 +240,13 @@
                     muted: true,
                     controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
                     settings: ['captions', 'quality', 'speed'],
+                    // ===== পরিবর্তন: ডাবল ক্লিকে ফুলস্ক্রিন বন্ধ করা হয়েছে =====
+                    fullscreen: {
+                        enabled: true,
+                        fallback: true,
+                        iosNative: true,
+                        doubleClick: false // এই লাইনটি জরুরি
+                    }
                 };
 
                 if (Hls.isSupported() && url.includes('.m3u8')) {
@@ -228,12 +264,16 @@
                         }
                         player = new Plyr(videoElement, defaultOptions);
                         setupAudioControls(hls);
+                        // ===== নতুন ফাংশনটি এখানে কল করা হয়েছে =====
+                        setupDoubleTapToSeek(player, player.elements.container);
                     });
                     hls.attachMedia(videoElement);
                     window.hls = hls;
                 } else {
                     videoElement.src = url;
                     player = new Plyr(videoElement, defaultOptions);
+                    // ===== নতুন ফাংশনটি এখানেও কল করা হয়েছে =====
+                    setupDoubleTapToSeek(player, player.elements.container);
                 }
                 window.player = player;
             }
