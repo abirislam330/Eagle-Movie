@@ -88,6 +88,39 @@
             color: white;
             border-color: transparent;
         }
+
+        /* ===== নতুন ডাউনলোড বাটন স্টাইল ===== */
+        #action-buttons-container {
+            text-align: center;
+            padding: 5px 20px 20px 20px;
+            background-color: #000;
+        }
+        .action-btn {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 12px 28px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2);
+        }
+        .action-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4);
+        }
+        .action-btn svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            fill: white;
+        }
         
         .ad-container {
             width: 100%; margin: 20px 0; display: flex;
@@ -130,6 +163,14 @@
             <video id="videoPlayer" playsinline controls></video>
         </div>
         <div id="audio-controls-container"></div>
+
+        <!-- ===== নতুন ডাউনলোড বাটন কন্টেইনার ===== -->
+        <div id="action-buttons-container">
+            <a href="#" id="download-btn" class="action-btn" download>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <span>ডাউনলোড</span>
+            </a>
+        </div>
     </header>
 
     <main>
@@ -174,11 +215,23 @@
             const relatedMoviesSection = document.getElementById('related-movies-section');
             let player;
 
+            // ===== নতুন: ডাউনলোড বাটন এবং তার কন্টেইনার সিলেক্ট করা =====
+            const downloadButton = document.getElementById('download-btn');
+            const actionButtonsContainer = document.getElementById('action-buttons-container');
+
             const urlParams = new URLSearchParams(window.location.search);
             const videoUrl = decodeURIComponent(urlParams.get('videoUrl') || '');
             const category = decodeURIComponent(urlParams.get('category') || '');
-            const movieName = decodeURIComponent(urlParams.get('name') || '');
+            const movieName = decodeURIComponent(urlParams.get('name') || 'movie');
             if (movieName) { document.title = `Playing: ${movieName}`; }
+            
+            // ===== নতুন: ডাউনলোড বাটন সেটআপ করার লজিক =====
+            if (videoUrl && videoUrl !== 'null' && videoUrl.trim() !== '') {
+                downloadButton.href = videoUrl;
+                downloadButton.setAttribute('download', movieName); // ফাইলের ডিফল্ট নাম সেট করবে
+            } else {
+                actionButtonsContainer.style.display = 'none'; // যদি ভিডিওর লিংক না থাকে, বাটন সেকশন হাইড হয়ে যাবে
+            }
 
             // ===== নতুন ফাংশন: ডাবল ট্যাপ করে Seek করার জন্য =====
             function setupDoubleTapToSeek(player, container) {
