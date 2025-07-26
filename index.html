@@ -39,6 +39,38 @@
         #main-search-input::placeholder { color: var(--text-muted); }
         #main-search-input:focus { outline: none; border-color: #00f2fe; }
 
+        /* ===== পরিবর্তিত: Telegram Request Button Styles ===== */
+        .request-section {
+            text-align: center;
+            padding: 10px 7% 40px;
+        }
+        .telegram-request-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            /* Padding এবং Font-size কমানো হয়েছে */
+            padding: 12px 25px;
+            font-size: 1rem;
+            background: var(--primary-gradient);
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 242, 254, 0.2);
+        }
+        .telegram-request-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(217, 0, 194, 0.25);
+        }
+        .telegram-request-btn svg {
+            /* আইকনের সাইজ কমানো হয়েছে */
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            fill: white;
+        }
+
         .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; padding: 0 7% 30px; }
         .movie-card { background-color: transparent; cursor: pointer; transition: transform 0.3s; }
         .movie-card:hover { transform: translateY(-5px); }
@@ -49,29 +81,9 @@
         .movie-year { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
         .app-message { text-align: center; padding: 40px; color: var(--text-muted); grid-column: 1 / -1; }
 
-        /* ===== নতুন CSS: লোডিং স্পিনারের জন্য শুরু ===== */
-        .loader-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 50px;
-            width: 100%;
-        }
-        .loader {
-            width: 50px;
-            height: 50px;
-            border: 5px solid var(--surface-color);
-            border-top-color: #00f2fe;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-        /* ===== নতুন CSS: লোডিং স্পিনারের জন্য শেষ ===== */
-
+        .loader-wrapper { display: flex; justify-content: center; align-items: center; padding: 50px; width: 100%; }
+        .loader { width: 50px; height: 50px; border: 5px solid var(--surface-color); border-top-color: #00f2fe; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -86,12 +98,18 @@
             <input type="text" id="main-search-input" placeholder="Search all movies...">
         </section>
 
-        <!-- ===== নতুন HTML: স্পিনারের জন্য কন্টেইনার ===== -->
+        <!-- ===== পরিবর্তিত: Movie Request Section ===== -->
+        <section class="request-section">
+            <a href="https://t.me/eagletv0" target="_blank" class="telegram-request-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 2L2 9.5l7.5 2.5L12 19.5L22 2zM12 14.5v-2.5l5-4.5-7.5 5v-2L18 6l-8.5 6.5z"></path></svg>
+                <!-- লেখাটি ইংরেজি করা হয়েছে -->
+                <span>Movie Request</span>
+            </a>
+        </section>
+
         <div class="loader-wrapper" id="loader">
             <div class="loader"></div>
         </div>
-
-        <!-- ===== পরিবর্তিত HTML: মুভি গ্রিড প্রথমে লুকানো থাকবে ===== -->
         <section class="movie-grid" id="movie-grid" style="display: none;"></section>
     </main>
     
@@ -115,7 +133,7 @@
             const movieGrid = document.getElementById('movie-grid');
             const mainSearchInput = document.getElementById('main-search-input');
             const filterChipsContainer = document.getElementById('filter-chips');
-            const loader = document.getElementById('loader'); // স্পিনারের রেফারেন্স
+            const loader = document.getElementById('loader');
             let allMovies = []; 
 
             function displayMovies(movies) {
@@ -190,7 +208,6 @@
             });
 
             async function initializeApp() {
-                // অ্যাপ শুরুতেই স্পিনার দেখাও এবং গ্রিড লুকাও
                 loader.style.display = 'flex';
                 movieGrid.style.display = 'none';
 
@@ -209,7 +226,6 @@
                     console.error("Initialization failed:", error);
                     movieGrid.innerHTML = `<p class="app-message">Failed to load movies.</p>`;
                 } finally {
-                    // সফল হোক বা ব্যর্থ, শেষে স্পিনারটি লুকাও এবং মুভির গ্রিডটি দেখাও
                     loader.style.display = 'none';
                     movieGrid.style.display = 'grid';
                 }
